@@ -105,14 +105,38 @@ public:
         response.setChunkedTransferEncoding(true);
         response.setContentType("application/json");
         std::ostream &ostr = response.send();
-
         if (form.has("id"))
         {
-            
             std::string login = form.get("login").c_str();
+            bool no_cache = false;
+            if (form.has("no_cache"))
+            {
+                no_cache = true;
+            }
+            if (!no_cache)
+            {
+                try
+                {
+                    database::Person result = database::Person::read_from_cache_by_id(login);
+                    std::cout << "item from cache:" << login << std::endl;
+                    Poco::JSON::Stringifier::stringify(result.toJSON(), ostr);
+                    return;
+                }
+                catch (...)
+                {
+                    std::cout << "cache missed for login:" << login << std::endl;
+                }
+            }
+
             try
             {
                 database::Person result = database::Person::read_by_login(login);
+
+                if (!no_cache)
+                {
+                    result.save_to_cache();
+                }
+
                 Poco::JSON::Stringifier::stringify(result.toJSON(), ostr);
                 return;
             }
@@ -184,6 +208,7 @@ public:
                                 try
                                 {
                                     person.save_to_mysql();
+                                    person.save_to_cache();
                                     ostr << "{ \"result\": true }";
                                     return;
                                 }

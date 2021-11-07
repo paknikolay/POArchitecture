@@ -24,6 +24,7 @@ namespace database
             const std::string &get_first_name() const;
             const std::string &get_last_name() const;
             int get_age() const;
+            size_t size_of_cache() const;
 
             int& id();
             std::string &login();
@@ -32,10 +33,12 @@ namespace database
             int& age();
 
             static void init();
-            static Person read_by_login(std::string login);
+            static Person read_by_login(const std::string& login);
+            static Person read_from_cache_by_login(const std::string& login);
             static std::vector<Person> read_all();
-            static std::vector<Person> search(std::string first_name,std::string last_name);
+            static std::vector<Person> search(std::string first_name, std::string last_name);
             void save_to_mysql();
+            void save_to_cache();
 
             Poco::JSON::Object::Ptr toJSON() const;
 

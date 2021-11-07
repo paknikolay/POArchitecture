@@ -1,5 +1,6 @@
 #include "person.h"
 #include "database.h"
+#include "cache.h"
 #include "../config/config.h"
 
 #include <Poco/Data/MySQL/Connector.h>
@@ -85,7 +86,7 @@ namespace database
         return person;
     }
 
-    Person Person::read_by_login(std::string login)
+    Person Person::read_by_login(const std::string& login)
     {
         try
         {
@@ -97,7 +98,7 @@ namespace database
                 into(person._first_name),
                 into(person._last_name),
                 into(person._age),
-                use(login),
+                useRef(login),
                 range(0, 1); //  iterate over result set one row at a time
             if (!select.done())
             {
@@ -117,6 +118,24 @@ namespace database
         {
 
             std::cout << "statement:" << e.what() << std::endl;
+            throw;
+        }
+    }
+
+    Person Person::read_from_cache_by_login(const std::string& login)
+    {
+
+        try
+        {
+            std::string result;
+            if (database::Cache::get().get(login, result))
+                return fromJSON(result);
+            else
+                throw std::logic_error("key not found in the cache");
+        }
+        catch (const std::exception& err)
+        {
+            //std::cout << "error:" << err.what() << std::endl;
             throw;
         }
     }
@@ -201,7 +220,7 @@ namespace database
         }
     }
 
-   
+
     void Person::save_to_mysql()
     {
 
@@ -239,6 +258,19 @@ namespace database
             std::cout << "statement:" << e.what() << std::endl;
             throw;
         }
+    }
+
+    size_t Person::size_of_cache() const
+    {
+        return database::Cache::get().size();
+    }
+
+    void Person::save_to_cache()
+    {
+        std::stringstream ss;
+        Poco::JSON::Stringifier::stringify(toJSON(), ss);
+        std::string message = ss.str();
+        database::Cache::get().put(_login, message);
     }
 
     int Person::get_id() const

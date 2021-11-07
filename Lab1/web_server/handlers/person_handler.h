@@ -117,7 +117,7 @@ public:
             {
                 try
                 {
-                    database::Person result = database::Person::read_from_cache_by_id(login);
+                    database::Person result = database::Person::read_from_cache_by_login(login);
                     std::cout << "item from cache:" << login << std::endl;
                     Poco::JSON::Stringifier::stringify(result.toJSON(), ostr);
                     return;

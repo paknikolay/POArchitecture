@@ -122,7 +122,7 @@ namespace database
         }
     }
 
-    Person Person::read_from_cache_by_id(const std::string& login)
+    Person Person::read_from_cache_by_login(const std::string& login)
     {
 
         try

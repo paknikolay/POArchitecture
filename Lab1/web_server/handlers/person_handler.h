@@ -105,7 +105,7 @@ public:
         response.setChunkedTransferEncoding(true);
         response.setContentType("application/json");
         std::ostream &ostr = response.send();
-        if (form.has("id"))
+        if(request.getMethod() == request.HTTP_GET && form.has("login"))
         {
             std::string login = form.get("login").c_str();
             bool no_cache = false;
@@ -145,87 +145,65 @@ public:
                 ostr << "{ \"result\": false , \"reason\": \"not found\" }";
                 return;
             }
-        }
-        else if (form.has("search"))
+        } else if (request.getMethod() == request.HTTP_POST)
         {
-            try
+            if (form.has("first_name") && form.has("last_name")
+                && form.has("age") && form.has("login"))
             {
-                std::string fn = form.get("first_name");
-                std::string ln = form.get("last_name");
-                auto results = database::Person::search(fn,ln);
-                Poco::JSON::Array arr;
-                for (auto s : results)
-                    arr.add(s.toJSON());
-                Poco::JSON::Stringifier::stringify(arr, ostr);
+                database::Person person;
+                person.login() = form.get("login");
+                person.first_name() = form.get("first_name");
+                person.last_name() = form.get("last_name");
+                person.age() = atoi(form.get("age").c_str());
+
+                bool check_result = true;
+                std::string message;
+                std::string reason;
+
+                if (!check_name(person.get_first_name(), reason))
+                {
+                    check_result = false;
+                    message += reason;
+                    message += "<br>";
+                }
+
+                if (!check_name(person.get_last_name(), reason))
+                {
+                    check_result = false;
+                    message += reason;
+                    message += "<br>";
+                }
+
+                if (!check_login(person.get_login(), reason))
+                {
+                    check_result = false;
+                    message += reason;
+                    message += "<br>";
+                }
+
+                if (check_result)
+                {
+                    try
+                    {
+                        person.save_to_mysql();
+                        person.save_to_cache();
+                        ostr << "{ \"result\": true }";
+                        return;
+                    }
+                    catch (...)
+                    {
+                        ostr << "{ \"result\": false , \"reason\": \" database error\" }";
+                        return;
+                    }
+                }
+                else
+                {
+                    ostr << "{ \"result\": false , \"reason\": \"" << message << "\" }";
+                    return;
+                }
             }
-            catch (...)
-            {
-                ostr << "{ \"result\": false , \"reason\": \"not found\" }";
-                return;
-            }
-            return;
         }
-        else if (form.has("add"))
-        {
-            if (form.has("first_name"))
-                if (form.has("last_name"))
-                    if (form.has("age"))
-                        if (form.has("login"))
-                        {
-                            database::Person person;
-                            person.login() = form.get("login");
-                            person.first_name() = form.get("first_name");
-                            person.last_name() = form.get("last_name");
-                            person.age() = atoi(form.get("age").c_str());
-
-                            bool check_result = true;
-                            std::string message;
-                            std::string reason;
-
-                            if (!check_name(person.get_first_name(), reason))
-                            {
-                                check_result = false;
-                                message += reason;
-                                message += "<br>";
-                            }
-
-                            if (!check_name(person.get_last_name(), reason))
-                            {
-                                check_result = false;
-                                message += reason;
-                                message += "<br>";
-                            }
-
-                            if (!check_login(person.get_login(), reason))
-                            {
-                                check_result = false;
-                                message += reason;
-                                message += "<br>";
-                            }
-
-                            if (check_result)
-                            {
-                                try
-                                {
-                                    person.save_to_mysql();
-                                    person.save_to_cache();
-                                    ostr << "{ \"result\": true }";
-                                    return;
-                                }
-                                catch (...)
-                                {
-                                    ostr << "{ \"result\": false , \"reason\": \" database error\" }";
-                                    return;
-                                }
-                            }
-                            else
-                            {
-                                ostr << "{ \"result\": false , \"reason\": \"" << message << "\" }";
-                                return;
-                            }
-                        }
-        }
-     }
+    }
 
 private:
     std::string _format;
